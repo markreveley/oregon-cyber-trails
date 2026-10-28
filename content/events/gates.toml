@@ -1,0 +1,206 @@
+# River crossings: one big decision at the end of each stage, in the
+# ford / caulk / ferry / wait pattern.
+
+[[event]]
+id = "gate.launch"
+title = "River crossing: the first customer"
+kind = "gate"
+stage = "launch"
+cause = "a security questionnaire"
+text = "Your first paying customer sends a security questionnaire. Question 1: \"Do all staff use multi-factor authentication?\""
+
+[[event.option]]
+label = "Yes, and here is the policy"
+requires_control = "mfa"
+tags = ["textbook"]
+outcome = "They tick the box and sign."
+
+[[event.option]]
+label = "Yes: security keys for everyone"
+requires_control = "passkeys"
+tags = ["textbook", "secure"]
+outcome = "They are impressed and sign."
+effect = { trust = 3 }
+
+[[event.option]]
+label = "Ferry: buy MFA for the team this week"
+requires_missing = "mfa"
+cost = 1000
+hours = 10
+tags = ["textbook"]
+outcome = "Rolled out by Friday. They sign."
+effect = { add_control = "mfa" }
+
+[[event.option]]
+label = "Ford it: answer yes and fix it later"
+outcome = "They sign."
+chance = [{ p = 0.4, delay = 4, outcome = "Their auditor checks. You said yes when the answer was no.", effect = { trust = -15, surfaced = true }, unless_control = "mfa" }]
+
+[[event.option]]
+label = "Wait: tell the truth and lose the deal"
+outcome = "They go with a competitor."
+effect = { trust = 2, revenue_weeks_lost = 2 }
+
+[event.note]
+text = "A security questionnaire is a promise. Answering yes to something you have not done turns a gap into a lie."
+source = "CISA, Secure by Design"
+
+[[event]]
+id = "gate.signin"
+title = "River crossing: build or buy sign-in"
+kind = "gate"
+stage = "signin"
+cause = "a home-made login system"
+text = "To close your Series A, investors want sign-in that enterprises will accept: single sign-on, standard protocols, an audit trail."
+
+[[event.option]]
+label = "Ford it: build your own sign-in system"
+hours = 40
+outcome = "It works. It is also 6,000 lines of security code only you have read."
+effect = { fatigue_all = 2 }
+chance = [{ p = 0.5, delay = 3, outcome = "A researcher finds a flaw in your home-made token check.", effect = { trust = -10 } }]
+
+[[event.option]]
+label = "Caulk it: use a well-known open-source library"
+hours = 20
+tags = ["textbook"]
+outcome = "Standard protocols, a library thousands of others rely on, and some long nights."
+effect = { fatigue_all = 1 }
+
+[[event.option]]
+label = "Ferry: pay an identity provider"
+cost = 6000
+tags = ["secure"]
+outcome = "Done in a week. A new monthly bill."
+effect = { add_control = "sso" }
+
+[[event.option]]
+label = "Wait: ask the investors for another quarter"
+outcome = "They agree, at a lower valuation."
+effect = { trust = -5, budget = -5000 }
+
+[event.note]
+text = "Sign-in is security code where small mistakes are fatal. Building it yourself is rarely the cheapest way across."
+source = "OWASP Authentication Cheat Sheet"
+
+[[event]]
+id = "gate.identifier"
+title = "River crossing: the SOC 2 audit"
+kind = "gate"
+stage = "identifier"
+cause = "a failed audit"
+text = "You have reached the SOC 2 audit. The auditor asks how production signing keys are stored and rotated."
+
+[[event.option]]
+label = "Show your rotation records"
+requires_flag = "rotation-practised"
+tags = ["textbook", "secure"]
+outcome = "The auditor has no further questions."
+effect = { trust = 3 }
+
+[[event.option]]
+label = "Ford it: show the key in the deploy config and promise to fix it"
+outcome = "An exception in the report. Customers read the report."
+effect = { trust = -6 }
+
+[[event.option]]
+label = "Caulk it: write and test a rotation runbook this week"
+hours = 30
+tags = ["textbook"]
+outcome = "Rotation tested on staging and production. The auditor is satisfied."
+effect = { set_flag = ["rotation-practised"], fatigue_all = 1 }
+
+[[event.option]]
+label = "Ferry: buy hardware key storage"
+cost = 15000
+hours = 8
+tags = ["secure"]
+outcome = "Keys move into hardware. Clean report."
+effect = { add_control = "hsm", trust = 2 }
+
+[[event.option]]
+label = "Wait: ask for a two-week extension"
+outcome = "Granted, grudgingly."
+effect = { trust = -5 }
+
+[event.note]
+text = "Auditors ask about keys because a stolen signing key lets an attacker be anyone. Show where keys live and that you can rotate them."
+source = "AICPA, SOC 2 Trust Services Criteria (CC6.1)"
+topics = ["claim:rotation-is-ordinary", "claim:key-storage-decides-safety"]
+
+[[event]]
+id = "gate.keys"
+title = "River crossing: the enterprise contract"
+kind = "gate"
+stage = "keys"
+cause = "a promise you could not keep"
+text = "A bank wants to sign a large contract. Their security team asks: \"Can one of your employees use our users' keys without anyone knowing?\""
+
+[[event.option]]
+label = "No: two people to unlock, every use logged"
+requires_flag = "split-duties"
+tags = ["textbook", "secure"]
+outcome = "The bank signs."
+effect = { trust = 4 }
+
+[[event.option]]
+label = "No: the keys are in hardware"
+requires_control = "hsm"
+tags = ["textbook"]
+outcome = "The bank signs, after asking about the hardware's admin access."
+effect = { trust = 2 }
+
+[[event.option]]
+label = "Caulk it: put split duties and logging in place first"
+cost = 2000
+hours = 24
+tags = ["textbook"]
+outcome = "Two weeks of work. The bank signs."
+effect = { set_flag = ["split-duties"], fatigue_all = 1 }
+
+[[event.option]]
+label = "Ford it: say no and mean to make it true"
+outcome = "The bank signs."
+chance = [{ p = 0.5, delay = 4, outcome = "The bank's pen-testers find the console. You said no.", effect = { trust = -18, surfaced = true } }]
+
+[[event.option]]
+label = "Wait: decline the contract for now"
+outcome = "The bank goes elsewhere."
+effect = { revenue_weeks_lost = 3 }
+
+[event.note]
+text = "Customers who let you hold their keys are trusting your people, not just your servers. Make misuse require two people and leave a record."
+source = "NIST SP 800-53, AC-5 Separation of Duties"
+topics = ["claim:c2-splits-privileges", "claim:c2-signatures-need-logged-consent"]
+
+[[event]]
+id = "gate.agents"
+title = "River crossing: the IPO roadshow"
+kind = "gate"
+stage = "agents"
+cause = "a bad answer on the roadshow"
+text = "Underwriters ask the question every investor will: \"If one of your AI agents goes rogue, how fast can you stop it, and what can it do before you do?\""
+
+[[event.option]]
+label = "Seconds, and only what its narrow grant allows"
+requires_flag = "live-revocation"
+tags = ["textbook", "secure"]
+outcome = "The underwriters move on to the next question."
+effect = { trust = 5 }
+
+[[event.option]]
+label = "Caulk it: narrow every agent's grants before the roadshow"
+hours = 30
+tags = ["textbook"]
+outcome = "A frantic fortnight. You can answer honestly."
+effect = { set_flag = ["narrow-grants"], fatigue_all = 2 }
+
+[[event.option]]
+label = "Ford it: \"Our agents are very well behaved\""
+outcome = "The underwriters write something down."
+effect = { trust = -8 }
+
+[event.note]
+text = "Investors and customers will ask what an agent can do and how fast you can stop it. Narrow grants and live revocation are the answer."
+source = "OWASP Top 10 for LLM Applications, LLM06 Excessive Agency"
+topics = ["claim:revocation-needs-live-state", "claim:agent-must-not-hold-upstream-credential"]

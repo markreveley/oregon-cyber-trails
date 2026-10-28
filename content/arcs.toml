@@ -1,0 +1,93 @@
+# Incident arcs: multi-week campaigns run by the hidden attacker. Each week
+# an active arc may advance one beat. Acting on a beat (an option with
+# knock_back) stops the arc. The last beat is the attacker's objective.
+
+[[arc]]
+id = "long-con"
+name = "The long con"
+start = [2, 3]
+weak_to = ["passkeys", "logging"]
+slowed_by = ["passkeys", "logging", "sso"]
+
+[[arc.beat]]
+label = "Recon: someone scraped the team page, name by name"
+events = ["arc.longcon.recon"]
+
+[[arc.beat]]
+label = "Initial access: the ops engineer was phished"
+events = ["arc.longcon.phish-blocked", "arc.longcon.phish"]
+
+[[arc.beat]]
+label = "Clue: the ops account signed in from two countries an hour apart"
+events = ["arc.longcon.clue"]
+
+[[arc.beat]]
+label = "Foothold: a new deploy key appeared in CI at 3am"
+events = ["arc.longcon.foothold"]
+
+[[arc.beat]]
+label = "Objective: the customer database went up for sale"
+events = ["arc.longcon.objective"]
+
+[[arc]]
+id = "ceo-inbox"
+name = "The founder's inbox"
+start = [5, 8]
+weak_to = ["mfa", "passkeys"]
+slowed_by = ["passkeys", "mfa", "logging"]
+
+[[arc.beat]]
+label = "Phish: a \"mailbox full\" email reached the founder"
+events = ["arc.ceo.phish"]
+
+[[arc.beat]]
+label = "Persistence: a forwarding rule sent invoices to an outside address"
+events = ["arc.ceo.rule"]
+
+[[arc.beat]]
+label = "Objective: a supplier's payment went to the attacker's bank"
+events = ["arc.ceo.objective"]
+
+[[arc]]
+id = "quiet-key"
+name = "The quiet key"
+min_level = 1
+start = [9, 12]
+weak_to = ["secret-scanning", "hsm"]
+slowed_by = ["secret-scanning", "logging", "short-tokens"]
+
+[[arc.beat]]
+label = "Leak: a signing key was pushed to a public fork"
+events = ["arc.key.caught", "arc.key.leak"]
+
+[[arc.beat]]
+label = "Use: tokens signed with it arrived from a strange network"
+events = ["arc.key.strange-network"]
+
+[[arc.beat]]
+label = "Clue: users reported actions they did not take"
+events = ["arc.key.reports"]
+
+[[arc.beat]]
+label = "Objective: forged admin tokens deleted customer workspaces"
+events = ["arc.key.objective"]
+
+[[arc]]
+id = "helpful-agent"
+name = "The helpful agent"
+min_level = 1
+start = [21, 22]
+weak_to = ["narrow-grants"]
+slowed_by = ["narrow-grants", "live-revocation"]
+
+[[arc.beat]]
+label = "Injection: a web page told the support agent to email the customer list"
+events = ["arc.agent.injection"]
+
+[[arc.beat]]
+label = "Escalation: the agent asked for a bigger refund limit"
+events = ["arc.agent.limit"]
+
+[[arc.beat]]
+label = "Objective: the agent refunded $20,000 to one account"
+events = ["arc.agent.objective"]

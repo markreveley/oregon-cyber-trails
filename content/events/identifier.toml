@@ -1,0 +1,295 @@
+# Stage 3: The identifier. Keys, rotation, caches, freshness, replay,
+# certificates and domains.
+
+[[event]]
+id = "identifier.signing-key-backup"
+title = "The signing key in a backup"
+stage = "identifier"
+cause = "an unrotated signing key"
+text = "The key that signs every sign-in token turns up in an old backup that a former contractor still has access to."
+gloss = "Your service signs tokens with a private key. Anyone holding a copy can make tokens that look real."
+
+[[event.option]]
+label = "Rotate it now and sign everyone out"
+hours = 10
+tags = ["textbook", "secure"]
+outcome = "Everyone signs in again. Annoying, and safe."
+effect = { trust = -2, set_flag = ["rotation-practised"] }
+
+[[event.option]]
+label = "Rotate it next month, quietly"
+outcome = "On the list."
+chance = [{ p = 0.4, delay = 2, event = "identifier.forged-tokens" }]
+
+[[event.option]]
+label = "The contractor is trustworthy"
+outcome = "Probably."
+chance = [{ p = 0.6, delay = 2, event = "identifier.forged-tokens" }]
+
+[event.note]
+text = "Rotation should be routine, not an emergency. A team that has rotated before can do it in an afternoon when it matters."
+source = "NIST SP 800-57 Part 1, Recommendation for Key Management"
+topics = ["claim:rotation-is-ordinary"]
+
+[[event]]
+id = "identifier.forged-tokens"
+title = "Forged tokens"
+kind = "followup"
+breach = true
+cause = "an unrotated signing key"
+text = "Someone is signing in as your admins with tokens your servers accept. They were signed with your old key."
+
+[[event.option]]
+label = "Emergency rotation, and tell customers"
+hours = 20
+tags = ["textbook", "discloses"]
+outcome = "Locked out by midnight. A painful week."
+effect = { trust = -10, fatigue_all = 2 }
+
+[[event.option]]
+label = "Emergency rotation, quietly"
+hours = 20
+outcome = "Locked out by midnight."
+effect = { trust = -4, fatigue_all = 2 }
+chance = [{ p = 0.5, delay = 3, outcome = "A customer's auditor finds the admin logins. It's in the news.", effect = { trust = -20, surfaced = true } }]
+
+[[event.option]]
+label = "Sign out the admins and hope"
+outcome = "The old key still works. They sign back in."
+effect = { trust = -8 }
+chance = [{ p = 0.6, delay = 2, outcome = "The forged logins continue and a customer notices.", effect = { trust = -15, surfaced = true } }]
+
+[[event]]
+id = "identifier.stale-cache"
+title = "The stale key list"
+stage = "identifier"
+cause = "a stale cache"
+text = "After you rotated a user's keys, a partner's cache kept serving the old key list for a week. The old key still worked there."
+gloss = "Other services keep a copy of your public keys. A copy that is too old trusts keys you have already retired."
+
+[[event.option]]
+label = "Shorten cache lifetimes and have partners check freshness"
+hours = 10
+tags = ["textbook", "secure"]
+outcome = "Copies older than an hour are refused."
+
+[[event.option]]
+label = "Ask the partner to purge their cache this once"
+hours = 1
+outcome = "Purged."
+chance = [{ p = 0.4, delay = 3, outcome = "It happens again at another partner. This time someone used it.", effect = { trust = -6 } }]
+
+[[event.option]]
+label = "It's their cache"
+outcome = "It is."
+chance = [{ p = 0.5, outcome = "A retired key was used to sign in.", effect = { trust = -6 } }]
+
+[event.note]
+text = "A key you have retired is only retired where people have heard. Freshness limits are part of security, not a performance setting."
+source = "RFC 9111, HTTP Caching (max-age)"
+topics = ["claim:resolver-can-serve-stale-document", "claim:freshness-is-security"]
+
+[[event]]
+id = "identifier.replay"
+title = "Replay"
+stage = "identifier"
+cause = "a replayed login"
+text = "Logs show a captured sign-in response used again an hour after the real one, from a different network."
+
+[[event.option]]
+label = "Check nonces and expiry on every sign-in"
+hours = 12
+tags = ["textbook", "secure"]
+outcome = "Each response now works once, for five minutes, at one service."
+
+[[event.option]]
+label = "Block that network"
+hours = 1
+outcome = "Blocked."
+chance = [{ p = 0.5, delay = 2, outcome = "It happens again from a different network.", effect = { trust = -8 } }]
+
+[[event.option]]
+label = "One odd log line"
+outcome = "You close the log."
+chance = [{ p = 0.5, delay = 1, outcome = "It was not one. 60 accounts were entered with replayed responses.", effect = { trust = -10 } }]
+
+[event.note]
+text = "A signed message is still valid if someone records and resends it. A nonce, an audience and a short expiry make each one single-use."
+source = "OpenID Connect Core 1.0, section 3.1.3.7 (ID Token validation)"
+topics = ["claim:nonce-prevents-replay", "claim:audience-and-expiry-protect-freshness"]
+
+[[event]]
+id = "identifier.cert-expiry"
+title = "The certificate expired"
+stage = "identifier"
+cause = "an expired certificate"
+text = "Your TLS certificate expired on Saturday morning. Every browser shows a full-page warning."
+gloss = "The certificate is how browsers know they reached the real you. When it expires, they warn everyone away."
+
+[[event.option]]
+label = "Renew it and automate renewal"
+hours = 6
+tags = ["textbook", "secure"]
+outcome = "Renewed, and it will renew itself from now on."
+effect = { trust = -2 }
+
+[[event.option]]
+label = "Renew it by hand and set a calendar reminder"
+hours = 1
+outcome = "Renewed. The reminder is in {ops}'s calendar."
+effect = { trust = -3 }
+
+[[event.option]]
+label = "Wait until Monday"
+outcome = "A weekend of warnings."
+effect = { trust = -8, revenue_weeks_lost = 1 }
+
+[event.note]
+text = "Certificates and domains fail on a date you know in advance. Automate the renewal, or one person's holiday becomes an outage."
+source = "Let's Encrypt, Why ninety-day lifetimes"
+
+[[event]]
+id = "identifier.domain-lapse"
+title = "The domain is lapsing"
+stage = "identifier"
+cause = "a lapsed domain"
+text = "Your domain expires in 30 days. The renewal reminders have been going to a former employee's inbox."
+
+[[event.option]]
+label = "Renew for five years, lock it, and monitor expiry"
+cost = 300
+hours = 2
+tags = ["textbook", "secure"]
+outcome = "Done. Nobody will think about this until 2031."
+
+[[event.option]]
+label = "Renew for one year"
+cost = 50
+outcome = "Renewed. The reminders still go to the old inbox."
+
+[[event.option]]
+label = "Plenty of time"
+outcome = "30 days is a long time."
+chance = [{ p = 0.6, delay = 3, event = "identifier.domain-lost" }]
+
+[event.note]
+text = "Whoever holds your domain can receive your email, your password resets and your sign-in redirects. Treat it like a key."
+source = "ICANN, Registrant Benefits and Responsibilities"
+
+[[event]]
+id = "identifier.domain-lost"
+title = "The domain is gone"
+kind = "followup"
+cause = "a lapsed domain"
+text = "Your domain lapsed and a squatter bought it within minutes. Your site, email and sign-in are down."
+
+[[event.option]]
+label = "Pay the squatter"
+cost = 15000
+outcome = "They took the money. You have your domain back after four days."
+effect = { trust = -10 }
+
+[[event.option]]
+label = "Move everything to a new domain"
+hours = 40
+outcome = "Every user has to sign in again. Passkeys for the old domain stop working."
+effect = { trust = -20, fatigue_all = 2, revenue_weeks_lost = 1 }
+
+[[event.option]]
+label = "Send the lawyers"
+outcome = "Two weeks offline while the lawyers write letters."
+effect = { trust = -25, revenue_weeks_lost = 2 }
+
+[[event]]
+id = "identifier.new-domain"
+title = "Marketing wants a new domain"
+stage = "identifier"
+cause = "a move to a new domain"
+when = { controls_present = ["passkeys"] }
+text = "Marketing wants sign-in moved from login.yourco.com to yourco.app for the rebrand. Every passkey is tied to the old domain."
+
+[[event.option]]
+label = "Keep sign-in on the old domain"
+tags = ["textbook"]
+outcome = "Marketing is unhappy. Sign-in keeps working."
+effect = { trust = -1 }
+
+[[event.option]]
+label = "Move it and help everyone enrol new passkeys"
+hours = 30
+outcome = "Three weeks of support tickets."
+effect = { trust = -6 }
+
+[[event.option]]
+label = "Move it on Monday"
+hours = 4
+outcome = "Every passkey stops working at once."
+effect = { trust = -15 }
+
+[event.note]
+text = "A passkey is bound to the domain it was made for. Choose the sign-in domain once and keep it."
+source = "W3C Web Authentication, section 5.1.4 (relying party ID)"
+topics = ["claim:rp-id-is-permanent"]
+
+[[event]]
+id = "identifier.supply-chain"
+title = "A dependency changes hands"
+stage = "any"
+min_level = 1
+cause = "a dependency someone took over"
+text = "A small library in your build was sold to a new maintainer. The latest version adds a script that runs on install."
+
+[[event.option]]
+label = "Pin the old version and review before updating"
+hours = 8
+tags = ["textbook", "secure"]
+outcome = "The new script sends your environment variables to a server abroad. You never ran it."
+
+[[event.option]]
+label = "Update to latest like always"
+outcome = "Build is green."
+chance = [{ p = 0.6, outcome = "Your cloud keys left with the install script. Someone mined crypto on your account.", effect = { budget = -6000, trust = -4 } }]
+
+[event.note]
+text = "Every dependency is code you run with your own keys. Pin versions, review changes, and keep secrets out of build environments."
+source = "OpenSSF, Concise Guide for Evaluating Open Source Software"
+
+[[event]]
+id = "identifier.ransomware"
+title = "Ransomware"
+stage = "any"
+min_level = 1
+when = { min_week = 9 }
+cause = "ransomware"
+knock_servers = [3, 4]
+text = "Ransomware has encrypted {down} servers. The note asks for $20,000 in crypto."
+
+[[event.option]]
+label = "Restore from offline backups"
+requires_control = "backups"
+hours = 20
+tags = ["textbook", "secure"]
+outcome = "Restored by the next morning. You lost six hours of data."
+effect = { restore_servers = true }
+
+[[event.option]]
+label = "Restore from the second server"
+requires_flag = "connected-backups"
+hours = 10
+outcome = "The second server was encrypted too."
+effect = { trust = -4 }
+
+[[event.option]]
+label = "Pay the ransom"
+cost = 20000
+outcome = "The key works on most files."
+effect = { restore_servers = true, trust = -6 }
+
+[[event.option]]
+label = "Rebuild from scratch"
+outcome = "Two weeks of rebuilding."
+effect = { restore_servers = true, trust = -12, revenue_weeks_lost = 2, fatigue_all = 3 }
+
+[event.note]
+text = "The only reliable answer to ransomware is a backup the attacker could not reach, and a restore you have practised."
+source = "CISA, #StopRansomware Guide"

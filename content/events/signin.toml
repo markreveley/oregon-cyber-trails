@@ -1,0 +1,239 @@
+# Stage 2: Sign-in. Building login: OAuth, OpenID Connect, tokens, consent.
+
+[[event]]
+id = "signin.wildcard-redirect"
+title = "A wildcard redirect"
+stage = "signin"
+cause = "a wildcard redirect URL"
+text = "A partner wants to register https://*.partner.example/* as a sign-in redirect URL. \"We have lots of subdomains.\""
+gloss = "After sign-in, your service sends a code to the redirect URL. Whoever controls that URL gets the code."
+
+[[event.option]]
+label = "Exact URLs only: they list each one"
+hours = 2
+tags = ["textbook", "secure"]
+outcome = "They grumble and send a list of four URLs."
+effect = { trust = -1 }
+
+[[event.option]]
+label = "Allow the wildcard. They're a partner."
+outcome = "Done in a minute."
+chance = [{ p = 0.5, delay = 2, event = "signin.redirect-abuse" }]
+
+[event.note]
+text = "Redirect URLs must match exactly. A wildcard lets anyone who takes over one forgotten subdomain receive your users' sign-in codes."
+source = "RFC 9700, OAuth 2.0 Security Best Current Practice, section 4.1"
+topics = ["claim:exact-redirect-match"]
+
+[[event]]
+id = "signin.redirect-abuse"
+title = "Codes sent to the wrong place"
+kind = "followup"
+breach = true
+cause = "a wildcard redirect URL"
+text = "An attacker took over an old partner subdomain. Sign-in codes for 900 users went there."
+
+[[event.option]]
+label = "Switch to exact URLs, revoke the tokens, tell users"
+hours = 10
+tags = ["textbook", "discloses"]
+outcome = "Fixed in a day. Users thank you for telling them."
+effect = { trust = -6 }
+
+[[event.option]]
+label = "Fix it quietly"
+hours = 10
+outcome = "Fixed. Silence."
+effect = { trust = -2 }
+chance = [{ p = 0.5, delay = 3, outcome = "A security researcher blogs about it.", effect = { trust = -16, surfaced = true } }]
+
+[[event.option]]
+label = "Hope nobody noticed"
+outcome = "The subdomain is still the attacker's."
+effect = { trust = -4 }
+chance = [{ p = 0.7, delay = 2, outcome = "A security researcher blogs about it, and it is still happening.", effect = { trust = -18, surfaced = true } }]
+
+[[event]]
+id = "signin.no-pkce"
+title = "Mobile app without PKCE"
+stage = "signin"
+cause = "a mobile app without PKCE"
+text = "Your new mobile app shipped its sign-in without PKCE."
+gloss = "PKCE ties a sign-in code to the app that asked for it, so another app on the phone cannot steal and use it."
+
+[[event.option]]
+label = "Hotfix it now"
+hours = 20
+tags = ["textbook", "secure"]
+outcome = "The fix ships on Thursday."
+
+[[event.option]]
+label = "Fix it in the next release"
+hours = 4
+outcome = "Next release is in a month."
+chance = [{ p = 0.35, delay = 2, outcome = "A fake app on some users' phones caught their sign-in codes.", effect = { trust = -8 } }]
+
+[[event.option]]
+label = "It's an edge case"
+outcome = "Moving on."
+chance = [{ p = 0.6, delay = 2, outcome = "A fake app on some users' phones caught their sign-in codes.", effect = { trust = -8 } }]
+
+[event.note]
+text = "Apps on a phone cannot keep a secret, so they prove the code is theirs with PKCE instead. Every public client needs it."
+source = "RFC 7636, Proof Key for Code Exchange"
+topics = ["claim:pkce-protects-code-exchange", "claim:public-clients-rely-on-pkce"]
+
+[[event]]
+id = "signin.token-screenshot"
+title = "A token in a screenshot"
+stage = "signin"
+cause = "a token in a screenshot"
+when = { controls_missing = ["short-tokens"] }
+text = "A customer pasted a support screenshot into a public forum. It shows a full access token. It is valid for 90 days."
+gloss = "An access token is like cash: whoever holds it can spend it."
+
+[[event.option]]
+label = "Revoke it and move to short-lived tokens"
+cost = 1500
+hours = 6
+tags = ["textbook", "secure"]
+outcome = "Tokens now last 15 minutes. That screenshot is worthless by lunch."
+effect = { add_control = "short-tokens" }
+
+[[event.option]]
+label = "Revoke that one token"
+hours = 1
+outcome = "Revoked."
+
+[[event.option]]
+label = "Ask the forum to take it down"
+outcome = "They do, two days later."
+chance = [{ p = 0.5, outcome = "Someone used it first.", effect = { trust = -6 } }]
+
+[event.note]
+text = "A bearer token works for whoever holds it. Short lifetimes limit how long a leaked one is worth anything."
+source = "RFC 6750, Bearer Token Usage, section 5"
+topics = ["claim:bearer-tokens-are-like-cash"]
+
+[[event]]
+id = "signin.shared-ids"
+title = "Partners compare notes"
+stage = "signin"
+cause = "a user ID shared with every partner"
+text = "Two partner apps matched up their users by the user ID your sign-in gives them, and built a combined profile of each person."
+
+[[event.option]]
+label = "Give each partner its own ID for each user"
+hours = 24
+tags = ["textbook", "secure"]
+outcome = "A painful migration. Partners can no longer join their data on your IDs."
+effect = { set_flag = ["pairwise-ids"] }
+
+[[event.option]]
+label = "Ask them nicely to stop"
+hours = 1
+outcome = "They promise."
+chance = [{ p = 0.5, delay = 3, outcome = "A privacy blogger finds the combined profiles.", effect = { trust = -8 } }]
+
+[[event.option]]
+label = "Accept it"
+outcome = "It's in the terms of service somewhere."
+effect = { trust = -3 }
+
+[event.note]
+text = "If every app sees the same user ID, apps can join their data behind the user's back. A different ID per app stops that."
+source = "OpenID Connect Core 1.0, section 8 (Subject Identifier Types)"
+topics = ["claim:shared-sub-enables-correlation", "claim:pairwise-sub-prevents-correlation"]
+
+[[event]]
+id = "signin.consent-phish"
+title = "A too-helpful app"
+stage = "signin"
+cause = "an app that asked for everything"
+text = "Users are approving \"Calendar Helper\", a third-party app that asks for full access to their mailbox through your sign-in."
+
+[[event.option]]
+label = "Block unverified apps from asking for broad access"
+hours = 6
+tags = ["textbook", "secure"]
+outcome = "Calendar Helper can now ask for calendars only. It stops asking."
+
+[[event.option]]
+label = "Put a warning on the consent screen"
+hours = 2
+outcome = "Most users click through anyway."
+chance = [{ p = 0.4, outcome = "It was harvesting mail.", effect = { trust = -5 } }]
+
+[[event.option]]
+label = "Users chose it, not us"
+outcome = "Technically true."
+chance = [{ p = 0.6, outcome = "It was harvesting mail, and users blame you.", effect = { trust = -10 } }]
+
+[event.note]
+text = "Signing in proves who you are. It does not mean you meant to hand an app everything. Consent should be narrow and visible."
+source = "OWASP OAuth 2.0 Cheat Sheet"
+topics = ["claim:authentication-is-not-authorization"]
+
+[[event]]
+id = "signin.device-code"
+title = "The smart TV code"
+stage = "signin"
+cause = "a stranger's TV code"
+text = "Users are getting texts from strangers: \"Enter this code at your-service.com/tv to claim a prize.\" The code signs the stranger's TV in as them."
+gloss = "Devices without a keyboard show a code you type on your phone to sign them in."
+
+[[event.option]]
+label = "Shorten code lifetimes and show which device is asking"
+hours = 10
+tags = ["textbook", "secure"]
+outcome = "The approval page now says \"A TV in another country wants your account\". Scams drop off."
+
+[[event.option]]
+label = "Add a warning banner"
+hours = 2
+outcome = "Some read it."
+chance = [{ p = 0.3, outcome = "A dozen accounts were taken.", effect = { trust = -4 } }]
+
+[[event.option]]
+label = "Nothing to do with us"
+outcome = "Hmm."
+chance = [{ p = 0.5, outcome = "Fifty accounts were taken.", effect = { trust = -7 } }]
+
+[event.note]
+text = "The device flow lets someone else start a sign-in and get you to finish it. Show who is asking, and keep codes short-lived."
+source = "RFC 8628, OAuth 2.0 Device Authorization Grant, section 5.4"
+topics = ["claim:device-grant-for-browserless"]
+
+[[event]]
+id = "signin.sim-swap"
+title = "SIM swap"
+stage = "signin"
+target = "founder"
+cause = "a SIM swap"
+when = { controls_missing = ["passkeys"] }
+text = "{who}'s phone suddenly has no signal. Their number was moved to a new SIM at a phone shop. Their MFA codes come by text."
+gloss = "A SIM swap moves your phone number to an attacker's phone, along with every text code."
+
+[[event.option]]
+label = "Lock the carrier account and move the team to security keys"
+cost = 3000
+hours = 4
+tags = ["textbook", "secure"]
+outcome = "Number recovered by evening. Codes by text are gone for good."
+effect = { add_control = "passkeys" }
+
+[[event.option]]
+label = "Get the number back and reset passwords"
+hours = 4
+outcome = "Number back by evening."
+chance = [{ p = 0.4, outcome = "", effect = { compromise_target = true } }]
+
+[[event.option]]
+label = "Wait for the carrier to sort it out"
+outcome = "Two days of no signal."
+effect = { compromise_target = true }
+
+[event.note]
+text = "Codes sent by text are only as safe as your phone number, and phone shops can be talked into moving it."
+source = "NIST SP 800-63B, section 5.1.3.3"
+topics = ["claim:passkeys-resist-phishing"]

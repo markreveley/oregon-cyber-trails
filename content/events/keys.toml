@@ -1,0 +1,204 @@
+# Stage 4: Holding keys for others. You now keep signing keys on behalf of
+# your users: insiders, breaches, recovery, consent.
+
+[[event]]
+id = "keys.insider-access"
+title = "One person can read everything"
+stage = "keys"
+target = "ops"
+cause = "one person who could read every key"
+text = "An audit finds {who} can read every user's stored keys from the production console, alone, with no record."
+
+[[event.option]]
+label = "Split the duty: two people to unlock, and log every access"
+cost = 2000
+hours = 16
+tags = ["textbook", "secure"]
+outcome = "Every access now needs a second person and leaves a record."
+effect = { set_flag = ["split-duties"] }
+
+[[event.option]]
+label = "{who} is trustworthy"
+outcome = "{who} is touched by your faith."
+chance = [{ p = 0.2, delay = 4, event = "keys.insider" }]
+
+[event.note]
+text = "Holding keys for users is safe only if no single person can use them unseen. Split the power, and log every use."
+source = "NIST SP 800-53, AC-5 Separation of Duties"
+topics = ["claim:c2-splits-privileges", "claim:c2-signatures-need-logged-consent"]
+
+[[event]]
+id = "keys.insider"
+title = "An insider"
+kind = "followup"
+breach = true
+cause = "one person who could read every key"
+text = "Someone with console access copied a high-value customer's keys and sold them. There is no record of who."
+
+[[event.option]]
+label = "Tell the customer, rotate their keys, split the duty"
+hours = 20
+tags = ["textbook", "discloses"]
+outcome = "The customer stays, barely."
+effect = { trust = -12, set_flag = ["split-duties"] }
+
+[[event.option]]
+label = "Rotate their keys quietly"
+outcome = "Rotated."
+effect = { trust = -4 }
+chance = [{ p = 0.6, delay = 2, outcome = "The customer finds out from their own investigation.", effect = { trust = -20, surfaced = true } }]
+
+[[event]]
+id = "keys.server-breach"
+title = "The key server is breached"
+stage = "keys"
+breach = true
+cause = "a breach of the key server"
+text = "An attacker got a shell on the server that holds your users' signing keys."
+
+[[event.option]]
+label = "Isolate it, rotate what you can, tell customers"
+hours = 20
+tags = ["textbook", "discloses"]
+outcome = "Contained in a day."
+effect = { trust = -5 }
+chance = [{ p = 1.0, unless_control = "hsm", outcome = "The keys were readable on disk. The attacker copied them all.", effect = { trust = -10 } }]
+
+[[event.option]]
+label = "Isolate it and stay quiet"
+hours = 10
+outcome = "Contained."
+chance = [
+  { p = 1.0, unless_control = "hsm", outcome = "The keys were readable on disk. The attacker copied them all.", effect = { trust = -6 } },
+  { p = 0.5, delay = 3, outcome = "Forged signatures turn up. The breach comes out.", effect = { trust = -18, surfaced = true } },
+]
+
+[[event.option]]
+label = "Reboot it and hope"
+outcome = "It reboots."
+effect = { trust = -10 }
+chance = [{ p = 1.0, unless_control = "hsm", outcome = "The attacker had already copied the key store.", effect = { trust = -15 } }]
+
+[event.note]
+text = "What a breach gives away depends on where keys live. In hardware, the attacker can ask for signatures while inside but cannot leave with the keys."
+source = "NIST SP 800-57 Part 1, section 6 (key protection)"
+topics = ["claim:breach-yields-signing-not-control", "claim:key-storage-decides-safety"]
+
+[[event]]
+id = "keys.recovery-call"
+title = "A convincing caller"
+stage = "keys"
+target = "random"
+cause = "a convincing caller"
+text = "A caller says she is a customer's CFO, lost her phone, and needs her account reset before a board meeting in an hour. She knows her account details. {who} took the call."
+
+[[event.option]]
+label = "Follow the recovery process, even if it takes a day"
+tags = ["textbook", "secure"]
+outcome = "She is furious. The real CFO, reached later, never called."
+effect = { trust = -1 }
+
+[[event.option]]
+label = "Help her. She sounds desperate."
+outcome = "{who} resets it."
+chance = [{ p = 0.6, outcome = "It was not the CFO. The attacker moved $40,000 of the customer's money.", effect = { trust = -14 } }]
+
+[[event.option]]
+label = "Escalate to {founder}"
+hours = 2
+outcome = "{founder} asks two questions she cannot answer."
+
+[event.note]
+text = "Recovery is where attackers aim, because it is built to let in someone who cannot prove who they are. Make it slow and strict, and never let it hand over keys."
+source = "NIST SP 800-63B, section 6.1.2.3 (account recovery)"
+topics = ["claim:account-and-key-recovery-never-merge"]
+
+[[event]]
+id = "keys.support-script"
+title = "Signing without asking"
+stage = "keys"
+cause = "signatures nobody approved"
+text = "Support has a script that signs documents on a user's behalf, using the key you hold for them, without asking the user."
+
+[[event.option]]
+label = "Require the user's fresh approval for every signature"
+hours = 14
+tags = ["textbook", "secure"]
+outcome = "Support is slower. Every signature now has the user's approval behind it."
+
+[[event.option]]
+label = "Log every use of the script"
+hours = 4
+outcome = "Now you know when it happens."
+chance = [{ p = 0.3, delay = 2, outcome = "A user disputes a signature. Your log shows support made it.", effect = { trust = -8 } }]
+
+[[event.option]]
+label = "Support needs it"
+outcome = "Support is happy."
+chance = [{ p = 0.5, delay = 2, outcome = "A user disputes a signature and you cannot show they made it.", effect = { trust = -10 } }]
+
+[event.note]
+text = "If you hold a key for someone, each use should carry their fresh approval, recorded where they can check it. Otherwise their signature means your signature."
+source = "NIST SP 800-63B, section 5.2.8 (verifier compromise)"
+topics = ["claim:managed-challenge-needs-fresh-proof", "claim:c2-signatures-need-logged-consent"]
+
+[[event]]
+id = "keys.synced-passkey"
+title = "A synced passkey"
+stage = "keys"
+cause = "a synced passkey"
+when = { controls_present = ["passkeys"] }
+text = "A big customer's admin lost their account. Their passkey synced through a cloud account that was taken over with an old password."
+
+[[event.option]]
+label = "Offer device-bound security keys to admins"
+hours = 10
+tags = ["textbook", "secure"]
+outcome = "Admins now carry a key that never syncs anywhere."
+
+[[event.option]]
+label = "Reset that admin and move on"
+hours = 1
+outcome = "Reset."
+chance = [{ p = 0.3, delay = 3, outcome = "It happens to another admin.", effect = { trust = -6 } }]
+
+[[event.option]]
+label = "It was their cloud account"
+outcome = "True, and they are still your customer."
+effect = { trust = -4 }
+
+[event.note]
+text = "A synced passkey is as safe as the account that syncs it. For the most powerful users, use keys that stay on one device."
+source = "FIDO Alliance, Passkeys (synced and device-bound)"
+topics = ["claim:synced-passkeys-trade-off"]
+
+[[event]]
+id = "keys.hsm-pitch"
+title = "A vendor pitch"
+stage = "keys"
+when = { controls_missing = ["hsm"] }
+text = "A vendor offers hardware key storage: \"Keys that can sign but can never be copied off the box.\""
+
+[[event.option]]
+label = "Buy it"
+cost = 10000
+hours = 8
+tags = ["secure"]
+outcome = "Keys move into hardware. The disk copies are destroyed."
+effect = { add_control = "hsm" }
+
+[[event.option]]
+label = "Write a rotation runbook instead"
+hours = 12
+tags = ["textbook"]
+outcome = "You can now rotate every user's key in an afternoon."
+effect = { set_flag = ["rotation-practised"] }
+
+[[event.option]]
+label = "Not this quarter"
+outcome = "The vendor will call back."
+
+[event.note]
+text = "Hardware storage changes what a breach costs. A practised rotation changes how fast you recover. Both are defences; one is cheaper."
+source = "NIST SP 800-57 Part 1"
+topics = ["claim:key-storage-decides-safety", "claim:rotation-is-ordinary"]

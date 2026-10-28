@@ -1,0 +1,82 @@
+# Controls you can buy at the Vendor Expo and at each vendor stop.
+# Costs are at funded-startup scale; the engine scales them by company type.
+
+[[control]]
+id = "password-manager"
+name = "Password manager for the team"
+cost = 1500
+upkeep = 100
+blurb = "Unique passwords everywhere. Stops reuse."
+gloss = "A vault that makes up a different password for every site, so one leak does not open the rest."
+
+[[control]]
+id = "mfa"
+name = "One-time-code MFA"
+cost = 1000
+upkeep = 50
+blurb = "Codes on top of passwords. Stops most password attacks, not real-time phishing."
+gloss = "After the password, you type a six-digit code from your phone."
+
+[[control]]
+id = "passkeys"
+name = "Security keys and passkeys"
+cost = 3000
+upkeep = 50
+blurb = "Sign-in that checks which site is asking. Stops phishing."
+gloss = "A key on a device that only answers the real website, so a fake page gets nothing."
+
+[[control]]
+id = "ddos"
+name = "DDoS protection"
+cost = 500
+upkeep = 600
+blurb = "A provider soaks up floods of junk traffic."
+gloss = "A DDoS is a flood of fake visitors that knocks your servers over."
+
+[[control]]
+id = "logging"
+name = "Central logging"
+cost = 1000
+upkeep = 500
+blurb = "Every sign-in and admin action in one place. You see more clues."
+gloss = "A single record of who did what, so odd behaviour stands out."
+
+[[control]]
+id = "backups"
+name = "Offline, tested backups"
+cost = 2000
+upkeep = 200
+blurb = "Copies ransomware cannot reach."
+gloss = "Copies of your data kept unplugged, and restored now and then to prove they work."
+
+[[control]]
+id = "sso"
+name = "Single sign-on"
+cost = 4000
+upkeep = 300
+blurb = "One login for every tool. One place to remove someone."
+gloss = "Staff sign in once through one provider, so turning off one account turns off all their access."
+
+[[control]]
+id = "secret-scanning"
+name = "Secret scanning in CI"
+cost = 1000
+upkeep = 100
+blurb = "Catches keys and passwords pushed to code."
+gloss = "A robot that reads every code change for passwords and keys before they go public."
+
+[[control]]
+id = "hsm"
+name = "Hardware key storage"
+cost = 10000
+upkeep = 500
+blurb = "Signing keys that cannot be copied off the box."
+gloss = "A locked device that signs with a key but never lets the key out."
+
+[[control]]
+id = "short-tokens"
+name = "Short-lived tokens"
+cost = 1500
+upkeep = 0
+blurb = "Sign-in tokens that expire in minutes, not months."
+gloss = "A token is a ticket that proves you signed in. Short-lived ones are worth little if stolen."
