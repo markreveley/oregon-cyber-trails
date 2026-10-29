@@ -1,0 +1,341 @@
+# Stage 1: Launch. Passwords, MFA, phishing, DDoS, offboarding.
+# Costs are dollars at funded-startup scale. Hours are team hours this week.
+
+[[event]]
+id = "launch.ddos"
+title = "DDoS attack"
+stage = "any"
+weight = 3
+repeat = true
+cause = "a DDoS nobody paid to stop"
+when = { controls_missing = ["ddos"] }
+knock_servers = [2, 4]
+text = "You are undergoing a DDoS attack. {down} of 5 servers are down."
+gloss = "A DDoS floods your servers with junk traffic until real users cannot get in."
+
+[[event.option]]
+label = "Absorb it: scale up and wait"
+cost = 8000
+tags = ["secure"]
+outcome = "You rent enough servers to soak it up. Expensive, but nobody noticed."
+effect = { restore_servers = true }
+
+[[event.option]]
+label = "Turn on a CDN's attack mode and sign up for protection"
+cost = 2000
+hint = "The mobile app's login breaks for a day."
+tags = ["textbook"]
+outcome = "The attack fades. 140 mobile users could not sign in for a day."
+effect = { restore_servers = true, trust = -2, add_control = "ddos" }
+
+[[event.option]]
+label = "Block the top 50 source networks by hand"
+role = "ops"
+hours = 20
+outcome = "It helps. Some of the traffic was real customers in Brazil."
+effect = { servers = 1, trust = -2 }
+chance = [{ p = 0.4, delay = 1, event = "launch.ddos-returns" }]
+
+[[event.option]]
+label = "Wait it out"
+outcome = "It lasts three days. Customers notice."
+effect = { trust = -8, revenue_weeks_lost = 1 }
+
+[event.note]
+text = "A DDoS is a budget question more than a technical one. Paying a provider in advance costs less than absorbing an attack on the day."
+source = "CISA, Understanding and Responding to DDoS Attacks"
+
+[[event]]
+id = "launch.ddos-returns"
+title = "The DDoS is back"
+kind = "followup"
+knock_servers = [2, 3]
+cause = "a DDoS nobody paid to stop"
+text = "The attackers came back from new networks. {down} servers are down again."
+
+[[event.option]]
+label = "Sign up for DDoS protection"
+cost = 1500
+tags = ["textbook", "secure"]
+outcome = "The provider absorbs it within the hour."
+effect = { restore_servers = true, add_control = "ddos" }
+
+[[event.option]]
+label = "Wait it out"
+outcome = "Another lost week."
+effect = { trust = -6, revenue_weeks_lost = 1 }
+
+[[event]]
+id = "launch.ddos-absorbed"
+title = "DDoS absorbed"
+stage = "any"
+when = { controls_present = ["ddos"] }
+text = "A DDoS hits at 2am. Your protection provider soaks it up. Nobody wakes up."
+
+[[event.option]]
+label = "Read the provider's report over coffee"
+outcome = "4 million requests from 30,000 home routers. All blocked."
+
+[event.note]
+text = "Protection you bought before the attack is the cheapest kind."
+source = "CISA, Understanding and Responding to DDoS Attacks"
+
+[[event]]
+id = "launch.stuffing"
+title = "Credential stuffing"
+stage = "launch"
+cause = "credential stuffing"
+text = "10,000 sign-in attempts in an hour, from a botnet, using passwords leaked from other sites."
+gloss = "Credential stuffing: attackers try passwords stolen from one site on another, betting people reuse them."
+
+[[event.option]]
+label = "Rate-limit sign-ins and warn affected users"
+hours = 10
+tags = ["textbook"]
+outcome = "The flood slows to a trickle."
+chance = [{ p = 0.5, unless_control = "mfa", outcome = "But 200 accounts were opened before the limit kicked in.", effect = { trust = -4 } }]
+
+[[event.option]]
+label = "Turn on MFA for every customer today"
+cost = 1000
+hours = 15
+tags = ["secure"]
+hint = "Some customers will grumble about the extra step."
+outcome = "Stolen passwords stop working. Support gets 80 annoyed emails."
+effect = { trust = -1, add_control = "mfa" }
+
+[[event.option]]
+label = "Watch and see"
+outcome = "You watch."
+chance = [{ p = 0.8, unless_control = "mfa", outcome = "Attackers get into 300 accounts and spend their stored credit.", effect = { trust = -10, budget = -3000 } }]
+
+[event.note]
+text = "Passwords leak from other sites all the time. A second factor makes a stolen password useless on its own."
+source = "OWASP Credential Stuffing Prevention Cheat Sheet"
+
+[[event]]
+id = "launch.phish"
+title = "Phishing"
+stage = "any"
+target = "engineer"
+cause = "a convincing login page"
+when = { controls_missing = ["passkeys"] }
+text = "{who} got an email: \"Your code-hosting session expired, sign in again.\" They clicked, then typed their password and a one-time code."
+gloss = "Phishing: a fake page that looks real, built to collect what you type."
+
+[[event.option]]
+label = "Revoke all their sessions and reset everything"
+hours = 8
+tags = ["textbook"]
+outcome = "Locked out within the hour. Whoever was on the other end got nothing they could keep."
+
+[[event.option]]
+label = "Just reset their password"
+hours = 1
+outcome = "Password changed."
+chance = [{ p = 0.6, outcome = "Quietly, the attacker kept the session they had already opened.", effect = { compromise_target = true } }]
+
+[[event.option]]
+label = "Assume it was harmless"
+outcome = "You move on."
+effect = { compromise_target = true }
+
+[event.note]
+text = "A one-time code can be typed into a fake page as easily as a real one. Passkeys check which site is asking, so they cannot be phished this way."
+source = "FIDO Alliance, How FIDO works"
+topics = ["claim:passkeys-resist-phishing"]
+
+[[event]]
+id = "launch.phish-blocked"
+title = "Phishing, blocked"
+stage = "any"
+target = "engineer"
+when = { controls_present = ["passkeys"] }
+text = "{who} clicked a fake \"session expired\" link. The page asked for their security key. The key refused: the page was not the real site."
+
+[[event.option]]
+label = "Tell the team what the fake page looked like"
+outcome = "Two others had the same email. Nobody fell for it."
+
+[event.note]
+text = "A security key checks which site is asking before it signs. A fake page can copy the look but not the name."
+source = "FIDO Alliance, How FIDO works"
+topics = ["claim:passkeys-resist-phishing"]
+
+[[event]]
+id = "launch.gift-cards"
+title = "The founder needs gift cards"
+stage = "launch"
+target = "intern"
+cause = "an email that said it was the founder"
+text = "{who} gets an email from \"{founder}\": \"In a meeting. Buy $1,500 of gift cards for a client and send me the codes. Urgent.\""
+
+[[event.option]]
+label = "Call {founder} on a known number to check"
+hours = 1
+tags = ["textbook"]
+outcome = "{founder} is at lunch and has never heard of it."
+
+[[event.option]]
+label = "Buy the cards. It's the founder."
+outcome = "The codes are spent within minutes. {founder} never sent that email."
+effect = { budget = -1500 }
+
+[[event.option]]
+label = "Forward it to everyone as a warning"
+hours = 2
+tags = ["secure"]
+outcome = "Three more people had the same email."
+effect = { set_flag = ["phish-aware"] }
+
+[event.note]
+text = "The From line of an email proves nothing. Urgency plus an unusual payment request is the pattern. Check through a channel you already trust."
+source = "FBI IC3, Business Email Compromise"
+topics = ["claim:signature-does-not-prove-truth"]
+
+[[event]]
+id = "launch.intern-leaves"
+title = "The intern leaves"
+stage = "launch"
+target = "intern"
+when = { controls_missing = ["sso"] }
+text = "{who} is off to university. Their accounts are spread across twelve tools: email, code, chat, analytics, the cloud console."
+
+[[event.option]]
+label = "Hunt down and close every account by hand"
+hours = 16
+tags = ["textbook"]
+outcome = "Eleven found and closed. Probably eleven."
+effect = { remove_target = true }
+chance = [{ p = 0.3, delay = 4, event = "launch.leftover-account" }]
+
+[[event.option]]
+label = "Buy single sign-on and turn them off in one place"
+cost = 4000
+hours = 6
+tags = ["secure"]
+outcome = "One switch. Every tool."
+effect = { remove_target = true, add_control = "sso" }
+
+[[event.option]]
+label = "Say goodbye and leave the accounts"
+outcome = "A nice card and some cake."
+effect = { remove_target = true }
+chance = [{ p = 0.7, delay = 3, event = "launch.leftover-account" }]
+
+[event.note]
+text = "Every account a leaver keeps is a door you forgot about. One sign-on provider makes removal one action instead of twelve."
+source = "NIST SP 800-53, AC-2 Account Management"
+topics = ["claim:idp-centralizes-sign-in"]
+
+[[event]]
+id = "launch.leftover-account"
+title = "A forgotten account"
+kind = "followup"
+breach = true
+cause = "an account nobody closed"
+text = "Someone signed in to your analytics tool with a former intern's old account and exported 40,000 customer emails."
+
+[[event.option]]
+label = "Close it, tell affected customers, and audit every tool"
+hours = 12
+tags = ["textbook", "discloses"]
+outcome = "Customers appreciate hearing it from you."
+effect = { trust = -5 }
+
+[[event.option]]
+label = "Close it quietly"
+outcome = "Account closed. Nobody needs to know."
+chance = [{ p = 0.5, delay = 4, outcome = "A journalist got the email list and calls for comment.", effect = { trust = -18, surfaced = true } }]
+
+[[event]]
+id = "launch.laptop"
+title = "Stolen laptop"
+stage = "launch"
+target = "random"
+cause = "a laptop left in a car"
+text = "{who}'s laptop was stolen from a car. It had a browser full of signed-in sessions and a few API keys."
+
+[[event.option]]
+label = "Revoke their sessions and rotate every key that was on it"
+hours = 12
+tags = ["textbook"]
+outcome = "Whatever was on the laptop is now worthless."
+
+[[event.option]]
+label = "Change their password"
+hours = 2
+outcome = "Password changed. The sessions and keys stay valid."
+chance = [{ p = 0.5, outcome = "", effect = { compromise_target = true } }]
+
+[[event.option]]
+label = "Hope it was just a thief who wanted a laptop"
+outcome = "Probably."
+chance = [{ p = 0.6, outcome = "", effect = { compromise_target = true } }]
+
+[event.note]
+text = "Changing a password does not end sessions or revoke keys already issued. Revoke what the device held."
+source = "OWASP Session Management Cheat Sheet"
+topics = ["claim:key-storage-decides-safety"]
+
+[[event]]
+id = "launch.reused-password"
+title = "Password reuse"
+stage = "launch"
+target = "random"
+cause = "a reused password"
+when = { controls_missing = ["password-manager"] }
+text = "A breach list includes {who}'s personal email. They use the same password for your cloud console."
+
+[[event.option]]
+label = "Buy a password manager for the whole team"
+cost = 1500
+hours = 6
+tags = ["textbook", "secure"]
+outcome = "Every account gets its own password. {who} changes theirs first."
+effect = { add_control = "password-manager" }
+
+[[event.option]]
+label = "Ask {who} to change that password"
+hours = 1
+outcome = "Changed. To something they also use elsewhere."
+chance = [{ p = 0.3, unless_control = "mfa", outcome = "", effect = { compromise_target = true } }]
+
+[[event.option]]
+label = "Ignore it"
+outcome = "You have bigger problems."
+chance = [{ p = 0.6, unless_control = "mfa", outcome = "", effect = { compromise_target = true } }]
+
+[event.note]
+text = "When one site leaks, every site with the same password leaks too. A password manager makes unique passwords effortless."
+source = "NIST SP 800-63B, Memorized Secrets"
+
+[[event]]
+id = "launch.ransomware-scare"
+title = "A competitor gets ransomware"
+stage = "launch"
+when = { controls_missing = ["backups"] }
+text = "A competitor's files were encrypted by ransomware. They were down for two weeks. Your backups are a folder on the same server."
+gloss = "Ransomware encrypts your files and demands payment for the key."
+
+[[event.option]]
+label = "Buy offline backups and test a restore"
+cost = 2000
+hours = 8
+tags = ["textbook", "secure"]
+outcome = "The test restore takes 40 minutes and works."
+effect = { add_control = "backups" }
+
+[[event.option]]
+label = "Copy the backup folder to a second server"
+hours = 3
+outcome = "Now there are two copies, both on your network."
+effect = { set_flag = ["connected-backups"] }
+
+[[event.option]]
+label = "It won't happen to us"
+outcome = "Noted."
+
+[event.note]
+text = "Ransomware encrypts every copy it can reach. A backup is only real if it is out of reach and you have restored from it."
+source = "CISA, #StopRansomware Guide"

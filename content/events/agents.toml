@@ -1,0 +1,165 @@
+# Stage 5: Agents. AI agents acting for you and your customers:
+# delegated authority, approvals, revocation, narrowing.
+
+[[event]]
+id = "agents.upstream-key"
+title = "Give the agent the key?"
+stage = "agents"
+cause = "an agent holding the payment key"
+text = "The new support agent needs to issue refunds. The quick way is to give it the company's payment API key."
+gloss = "An AI agent is a program that takes actions on its own. Whatever key it holds, it can use for anything that key allows."
+
+[[event.option]]
+label = "Give it a narrow grant: refunds only, up to $100 each"
+hours = 16
+tags = ["textbook", "secure"]
+outcome = "The agent can refund. It cannot do anything else."
+effect = { set_flag = ["narrow-grants"] }
+
+[[event.option]]
+label = "Give it the payment key"
+outcome = "Refunds work by lunchtime."
+chance = [{ p = 0.4, delay = 2, event = "agents.refund-spree" }]
+
+[event.note]
+text = "Never give an agent the credential behind the door. Give it a narrow permission that only does the job, and that you can take back."
+source = "OWASP Top 10 for LLM Applications, LLM06 Excessive Agency"
+topics = ["claim:agent-must-not-hold-upstream-credential"]
+
+[[event]]
+id = "agents.refund-spree"
+title = "Refund spree"
+kind = "followup"
+cause = "an agent holding the payment key"
+text = "A customer talked the support agent into refunding 400 orders. It had the payment key, so it could."
+
+[[event.option]]
+label = "Swap the key for a narrow grant and claw back what you can"
+hours = 16
+tags = ["textbook"]
+outcome = "You recover about half."
+effect = { budget = -7000, set_flag = ["narrow-grants"] }
+
+[[event.option]]
+label = "Take the agent offline"
+outcome = "The money is gone and so is the agent."
+effect = { budget = -15000, trust = -4 }
+
+[[event]]
+id = "agents.reused-approval"
+title = "One approval, ten refunds"
+stage = "agents"
+cause = "an approval used ten times"
+text = "A manager approved one $500 refund. The agent used the same approval for nine more."
+
+[[event.option]]
+label = "Bind each approval to one action, one amount"
+hours = 12
+tags = ["textbook", "secure"]
+outcome = "Approvals are now single-use."
+
+[[event.option]]
+label = "Reverse the nine and remind the manager to be careful"
+hours = 4
+outcome = "Reversed."
+chance = [{ p = 0.4, delay = 2, outcome = "It happens again, with a bigger approval.", effect = { budget = -3000 } }]
+
+[[event.option]]
+label = "It's only $4,500"
+outcome = "It is."
+effect = { budget = -4500 }
+
+[event.note]
+text = "An approval should name the one action it allows. A reusable approval is a standing permission nobody meant to grant."
+source = "OWASP Top 10 for LLM Applications, LLM06 Excessive Agency"
+topics = ["claim:approvals-must-not-be-reusable", "claim:approval-as-narrow-grant"]
+
+[[event]]
+id = "agents.offline-revocation"
+title = "Revoked, but still working"
+stage = "agents"
+cause = "a revoked agent that kept working"
+text = "You revoked a misbehaving agent's access an hour ago. It is still placing orders. The order service only checks the token's signature."
+
+[[event.option]]
+label = "Add a live revocation check where orders are placed"
+hours = 16
+tags = ["textbook", "secure"]
+outcome = "The next order is refused within seconds."
+effect = { set_flag = ["live-revocation"] }
+
+[[event.option]]
+label = "Wait for its token to expire"
+outcome = "You wait."
+chance = [
+  { p = 1.0, unless_control = "short-tokens", outcome = "The token was good for 30 days. It placed 800 orders.", effect = { budget = -8000, trust = -5 } },
+]
+
+[[event.option]]
+label = "Rotate the signing key to kill every token"
+hours = 6
+outcome = "Every agent and every user is signed out at once."
+effect = { trust = -6 }
+
+[event.note]
+text = "A signature check can tell a token is genuine, not that it was revoked. Revocation needs a live check where the action happens, and should fail closed."
+source = "RFC 7009, OAuth 2.0 Token Revocation"
+topics = ["claim:revocation-needs-live-state", "claim:revocation-fails-closed"]
+
+[[event]]
+id = "agents.sub-agent"
+title = "A generous sub-agent"
+stage = "agents"
+cause = "a sub-agent with more power than its parent"
+text = "Your research agent started a helper agent and gave it write access to the customer database. The research agent itself only had read access."
+
+[[event.option]]
+label = "Enforce that delegation can only narrow"
+hours = 12
+tags = ["textbook", "secure"]
+outcome = "A helper can now get at most what its parent has."
+
+[[event.option]]
+label = "Review agent permissions every week"
+hours = 4
+outcome = "A new weekly meeting."
+chance = [{ p = 0.3, outcome = "The helper deleted 200 records before the review.", effect = { trust = -6 } }]
+
+[[event.option]]
+label = "The helper was only helping"
+outcome = "It was."
+chance = [{ p = 0.5, outcome = "It helpfully deleted 200 records.", effect = { trust = -8 } }]
+
+[event.note]
+text = "When an agent hands work to another, the permission passed on should only shrink. Nothing should be able to give away more than it holds."
+source = "Biscuit authorization tokens, attenuation"
+topics = ["claim:attenuation-only-narrows", "claim:delegation-is-attenuate-and-hand-over"]
+
+[[event]]
+id = "agents.cascade"
+title = "Orphaned agents"
+stage = "agents"
+cause = "agents nobody could switch off"
+text = "You revoked a compromised agent. The six helper agents it started are still running with its permissions."
+
+[[event.option]]
+label = "Make revocation cascade to everything it delegated"
+hours = 10
+tags = ["textbook", "secure"]
+outcome = "Revoking a parent now revokes its whole tree."
+
+[[event.option]]
+label = "Find and stop them by hand"
+hours = 20
+outcome = "Five found. Probably six."
+chance = [{ p = 0.3, outcome = "The sixth keeps sending email for a week.", effect = { trust = -5 } }]
+
+[[event.option]]
+label = "They'll finish on their own"
+outcome = "Eventually."
+chance = [{ p = 0.6, outcome = "They spend $5,000 of cloud time finishing.", effect = { budget = -5000 } }]
+
+[event.note]
+text = "Revoking a delegation must revoke everything that was delegated from it, or the tree outlives the root."
+source = "OAuth 2.0 Token Exchange, RFC 8693 (delegation chains)"
+topics = ["claim:revocation-cascades"]
